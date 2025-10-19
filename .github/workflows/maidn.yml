@@ -1,0 +1,63 @@
+name: Build and Test APK
+
+on:
+  push:
+    branches: [ main, master ]
+  release:
+    types: [ published ]
+
+env:
+  BUILD_TYPE: debug
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [3.9]
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: Cache Buildozer
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.buildozer
+          ~/.gradle
+        key: ${{ runner.os }}-buildozer-${{ hashFiles('buildozer.spec') }}
+        restore-keys: |
+          ${{ runner.os }}-buildozer-
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y $(cat .github/apt-dependencies.txt)
+
+    - name: Install Python packages
+      run: |
+        pip install buildozer cython
+        pip install -r requirements.txt
+
+    - name: Build APK
+      run: |
+        buildozer -v android ${{ env.BUILD_TYPE }}
+
+    - name: Upload APK
+      uses: actions/upload-artifact@v4
+      with:
+        name: dyaa-app-${{ env.BUILD_TYPE }}
+        path: bin/*.apk
+        retention-days: 90
+
+    - name: Create Release
+      if: github.event_name == 'release'
+      uses: softprops/action-gh-release@v1
+      with:
+        files: bin/*.apk
