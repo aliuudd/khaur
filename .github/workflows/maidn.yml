@@ -45,6 +45,8 @@ jobs:
         pip install buildozer cython
         pip install -r requirements.txt
 
+    
+
     - name: Build APK
       run: |
         buildozer -v android ${{ env.BUILD_TYPE }}
@@ -56,8 +58,15 @@ jobs:
         path: bin/*.apk
         retention-days: 90
 
+    - name: Install Android SDK Build Tools
+      run: |
+        yes | sdkmanager --licenses
+        sdkmanager "platform-tools" "platforms;android-28" "build-tools;28.0.3" "platforms;android-29" "build-tools;29.0.3"
+
+
     - name: Create Release
       if: github.event_name == 'release'
       uses: softprops/action-gh-release@v1
       with:
         files: bin/*.apk
+        
